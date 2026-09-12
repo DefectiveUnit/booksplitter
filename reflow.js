@@ -6,16 +6,16 @@ const DEFAULT_SETTINGS = {
   paperSize: "a4", // "letter" | "a4" — the sheet fed into the printer; folded in half it
                     // yields "letter" -> half-letter pages, "a4" -> A5 pages.
   signatureSheetCount: 4,
-  marginIn: 0.5, // single uniform margin on all four sides of every page
-  fontFamily: "Georgia, 'Times New Roman', serif",
-  fontSizePt: 11,
+  marginIn: 0.875, // single uniform margin on all four sides of every page
+  fontFamily: "Garamond, Baskerville, 'Palatino Linotype', Palatino, Georgia, serif",
+  fontSizePt: 11.5,
   lineHeight: 1.4,
   paragraphSpacingEm: 0.5,
   justify: true,
   duplexFlipEdge: "long", // "long" | "short"
   chapterStartNewPage: true,
   chapterTitleOffsetPercent: 35, // how far down the page a chapter title sits
-  chapterTitleFontFamily: "Georgia, 'Times New Roman', serif",
+  chapterTitleFontFamily: "Garamond, Baskerville, 'Palatino Linotype', Palatino, Georgia, serif",
 };
 
 // Paper sizes in inches (portrait, full sheet). Trim size = half of this, split
