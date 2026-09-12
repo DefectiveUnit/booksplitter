@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Booksplitter</title>
+<link rel="stylesheet" href="style.css">
+<style id="pageSizeStyle"></style>
+</head>
+<body>
+<header>
+  <h1>Booksplitter</h1>
+  <p>Turn an EPUB into a hand-bound, signature-stitched printable booklet.</p>
+</header>
+
+<div class="layout">
+  <div class="panel no-print">
+    <h2>1. Book</h2>
+    <div class="field">
+      <label for="fileInput">EPUB file</label>
+      <input type="file" id="fileInput" accept=".epub">
+    </div>
+    <div id="bookInfo" class="status"></div>
+
+    <h2>2. Paper &amp; binding</h2>
+    <div class="field">
+      <label for="paperSize">Paper size (sheet you print on)</label>
+      <select id="paperSize">
+        <option value="a4">A4</option>
+        <option value="letter">Letter</option>
+      </select>
+      <div id="paperSizeInfo" class="hint"></div>
+    </div>
+    <div class="field">
+      <label for="signatureSheetCount">Sheets per signature</label>
+      <input type="number" id="signatureSheetCount" min="1" max="20" value="4">
+      <div id="signatureSheetCountInfo" class="hint"></div>
+    </div>
+    <div class="field">
+      <label for="marginIn">Margin, all sides (in)</label>
+      <input type="number" id="marginIn" min="0" step="0.05" value="0.5">
+    </div>
+    <div class="field">
+      <label for="duplexFlipEdge">Printer duplex setting</label>
+      <select id="duplexFlipEdge">
+        <option value="long">Flip on long edge (book style) — recommended</option>
+        <option value="short">Flip on short edge (tablet style)</option>
+      </select>
+    </div>
+
+    <h2>3. Chapters</h2>
+    <div class="field checkbox">
+      <input type="checkbox" id="chapterStartNewPage" checked>
+      <label for="chapterStartNewPage">Start each chapter on a new page</label>
+    </div>
+    <div class="field">
+      <label for="chapterTitleOffsetPercent">Chapter title position (% down the page)</label>
+      <input type="number" id="chapterTitleOffsetPercent" min="0" max="80" step="5" value="35">
+    </div>
+    <div class="field">
+      <label for="chapterTitleFontFamily">Chapter title font</label>
+      <select id="chapterTitleFontFamily">
+        <option value="Georgia, 'Times New Roman', serif">Georgia (serif)</option>
+        <option value="'Times New Roman', Times, serif">Times New Roman</option>
+        <option value="'Palatino Linotype', Palatino, serif">Palatino</option>
+        <option value="Arial, Helvetica, sans-serif">Arial (sans)</option>
+        <option value="'Trebuchet MS', sans-serif">Trebuchet (sans)</option>
+        <option value="'Courier New', Courier, monospace">Courier (monospace)</option>
+      </select>
+    </div>
+
+    <h2>4. Typography</h2>
+    <div class="field">
+      <label for="fontFamily">Font family</label>
+      <select id="fontFamily">
+        <option value="Georgia, 'Times New Roman', serif">Georgia (serif)</option>
+        <option value="'Times New Roman', Times, serif">Times New Roman</option>
+        <option value="Arial, Helvetica, sans-serif">Arial (sans)</option>
+        <option value="'Courier New', Courier, monospace">Courier (monospace)</option>
+      </select>
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label for="fontSizePt">Font size (pt)</label>
+        <input type="number" id="fontSizePt" min="6" max="24" step="0.5" value="11">
+      </div>
+      <div class="field">
+        <label for="lineHeight">Line height</label>
+        <input type="number" id="lineHeight" min="1" max="3" step="0.05" value="1.4">
+      </div>
+    </div>
+    <div class="field">
+      <label for="paragraphSpacingEm">Paragraph spacing (em)</label>
+      <input type="number" id="paragraphSpacingEm" min="0" max="3" step="0.1" value="0.5">
+    </div>
+    <div class="field checkbox">
+      <input type="checkbox" id="justify" checked>
+      <label for="justify">Justify text</label>
+    </div>
+
+    <button id="generateBtn" disabled>Generate</button>
+    <div id="status" class="status"></div>
+
+    <h2>5. Print</h2>
+    <div class="print-instructions">
+      Before printing: set margins to <strong>None</strong>, scale to <strong>100% / Actual size</strong>,
+      duplex to <strong>double-sided</strong>, and match the flip-edge setting above.
+    </div>
+    <button id="printBtn" class="secondary" disabled>Print / Save as PDF</button>
+  </div>
+
+  <div id="preview" class="preview"></div>
+</div>
+
+<script src="vendor/jszip.min.js"></script>
+<script src="impose.js"></script>
+<script src="reflow.js"></script>
+<script src="epub.js"></script>
+<script src="paginate.js"></script>
+<script src="render.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
