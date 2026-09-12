@@ -8,22 +8,32 @@
 
 const PX_PER_IN = 96;
 const SPLITTABLE_TAGS = new Set(["P", "LI", "BLOCKQUOTE", "H1", "H2", "H3", "H4", "H5", "H6"]);
+// Fixed vertical band reserved at the top of the content box for the running
+// header (page number + chapter/book title), so it doesn't disturb pagination
+// as the actual header text (which varies per page) is filled in afterwards.
+const RUNNING_HEADER_BAND_PX = 34;
 
 /**
  * @param {string} flowHtml concatenated chapter HTML from parseEpub()
  * @param {object} settings see reflow.js DEFAULT_SETTINGS
+ * @param {string} [bookTitle] shown in the running header on verso pages, if enabled
  * @returns {Promise<HTMLDivElement[]>} array of page divs (class="page"), detached from DOM,
  *   each sized to the trim content box and ready to be moved into imposed sheet slots.
  */
-async function paginateContent(flowHtml, settings) {
+async function paginateContent(flowHtml, settings, bookTitle) {
   const s = { ...DEFAULT_SETTINGS, ...settings };
   const trim = getTrimSizeIn(s.paperSize);
   const trimWidthPx = Math.round(trim.width * PX_PER_IN);
   const trimHeightPx = Math.round(trim.height * PX_PER_IN);
-  const marginPx = Math.round(s.marginIn * PX_PER_IN);
-  // Content box = trim size minus equal margins on all four sides.
-  const targetWidthPx = trimWidthPx - 2 * marginPx;
-  const targetHeightPx = trimHeightPx - 2 * marginPx;
+  const marginTopPx = Math.round(s.marginTopIn * PX_PER_IN);
+  const marginBottomPx = Math.round(s.marginBottomIn * PX_PER_IN);
+  const marginGutterPx = Math.round(s.marginGutterIn * PX_PER_IN);
+  const marginOutsidePx = Math.round(s.marginOutsideIn * PX_PER_IN);
+  const headerBandPx = s.runningHeaders ? RUNNING_HEADER_BAND_PX : 0;
+  // Content box = trim size minus the gutter+outside margins (width) and
+  // top+bottom margins plus any reserved running-header band (height).
+  const targetWidthPx = trimWidthPx - marginGutterPx - marginOutsidePx;
+  const targetHeightPx = trimHeightPx - marginTopPx - marginBottomPx - headerBandPx;
 
   const ruler = document.createElement("div");
   ruler.style.position = "fixed";
@@ -57,20 +67,33 @@ async function paginateContent(flowHtml, settings) {
       (n) => n.nodeType === Node.ELEMENT_NODE || (n.nodeType === Node.TEXT_NODE && n.textContent.trim())
     );
 
-    const pageBlockLists = paginateBlocks(blocks, ruler, targetHeightPx, s.chapterStartNewPage);
+    const { pageBlockLists, pageChapterTitles } = paginateBlocks(
+      blocks, ruler, targetHeightPx, s.chapterStartNewPage
+    );
 
     const pages = pageBlockLists.map((blockList, i) => {
+      const pageNum = i + 1;
+      const isRecto = pageNum % 2 === 1; // odd = recto (right-hand page)
       const page = document.createElement("div");
       page.className = "page";
-      page.dataset.pageIndex = String(i + 1);
+      page.dataset.pageIndex = String(pageNum);
       page.style.boxSizing = "border-box";
+      page.style.position = "relative";
       page.style.width = trimWidthPx + "px";
       page.style.height = trimHeightPx + "px";
-      page.style.padding = marginPx + "px"; // equal margin on all four sides
+      page.style.paddingTop = (marginTopPx + headerBandPx) + "px";
+      page.style.paddingBottom = marginBottomPx + "px";
+      page.style.paddingLeft = (isRecto ? marginGutterPx : marginOutsidePx) + "px";
+      page.style.paddingRight = (isRecto ? marginOutsidePx : marginGutterPx) + "px";
       page.setAttribute("style", page.getAttribute("style") + ";" + buildTypographyCss(s));
       const pageStyle = document.createElement("style");
       pageStyle.textContent = buildParagraphSpacingCss(s);
       page.appendChild(pageStyle);
+
+      if (s.runningHeaders) {
+        page.appendChild(buildRunningHeader(pageNum, isRecto, pageChapterTitles[i], bookTitle, marginGutterPx, marginOutsidePx, headerBandPx));
+      }
+
       blockList.forEach((b) => page.appendChild(b));
       return page;
     });
@@ -81,13 +104,41 @@ async function paginateContent(flowHtml, settings) {
   }
 }
 
+// Builds the running-header line (page number + chapter/book title), absolutely
+// positioned inside the reserved top-margin band so it doesn't affect the
+// content flow that was already paginated against a fixed-height band.
+function buildRunningHeader(pageNum, isRecto, chapterTitle, bookTitle, gutterPx, outsidePx, headerBandPx) {
+  const header = document.createElement("div");
+  header.className = "running-header" + (isRecto ? " recto" : " verso");
+  header.style.position = "absolute";
+  header.style.top = Math.max(0, headerBandPx - 16) + "px";
+  header.style.left = (isRecto ? gutterPx : outsidePx) + "px";
+  header.style.right = (isRecto ? outsidePx : gutterPx) + "px";
+
+  const titleSpan = document.createElement("span");
+  titleSpan.className = "running-header-title";
+  // Convention: recto (right-hand) pages show the current chapter title,
+  // verso (left-hand) pages show the book title.
+  titleSpan.textContent = (isRecto ? chapterTitle : bookTitle) || "";
+
+  const numSpan = document.createElement("span");
+  numSpan.className = "running-header-num";
+  numSpan.textContent = String(pageNum);
+
+  header.appendChild(titleSpan);
+  header.appendChild(numSpan);
+  return header;
+}
+
 function fitsInRuler(ruler, targetHeightPx) {
   return ruler.scrollHeight <= targetHeightPx;
 }
 
 function paginateBlocks(blocks, ruler, targetHeightPx, chapterStartNewPage) {
   const pages = [];
+  const pageChapterTitles = [];
   let currentPageBlocks = [];
+  let currentChapterTitle = "";
   const preservedChildren = Array.from(ruler.children); // keep <style> tags etc.
 
   function resetRuler() {
@@ -98,6 +149,7 @@ function paginateBlocks(blocks, ruler, targetHeightPx, chapterStartNewPage) {
 
   function startNewPage() {
     pages.push(currentPageBlocks);
+    pageChapterTitles.push(currentChapterTitle);
     currentPageBlocks = [];
     resetRuler();
   }
@@ -118,6 +170,10 @@ function paginateBlocks(blocks, ruler, targetHeightPx, chapterStartNewPage) {
       wrapper.appendChild(block);
       queue.unshift(wrapper);
       continue;
+    }
+
+    if (block.classList && block.classList.contains("chapter-title")) {
+      currentChapterTitle = (block.textContent || "").trim();
     }
 
     if (chapterStartNewPage && block.classList && block.classList.contains("chapter-break")) {
@@ -155,8 +211,11 @@ function paginateBlocks(blocks, ruler, targetHeightPx, chapterStartNewPage) {
     }
   }
 
-  if (currentPageBlocks.length) pages.push(currentPageBlocks);
-  return pages;
+  if (currentPageBlocks.length) {
+    pages.push(currentPageBlocks);
+    pageChapterTitles.push(currentChapterTitle);
+  }
+  return { pageBlockLists: pages, pageChapterTitles };
 }
 
 /**

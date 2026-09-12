@@ -10,8 +10,9 @@ window.addEventListener("DOMContentLoaded", () => {
   [
     "fileInput", "bookInfo",
     "paperSize", "paperSizeInfo", "signatureSheetCount", "signatureSheetCountInfo",
-    "marginIn",
+    "marginTopIn", "marginBottomIn", "marginGutterIn", "marginOutsideIn",
     "fontFamily", "fontSizePt", "lineHeight", "paragraphSpacingEm", "justify",
+    "paragraphStyle", "indentEm", "chapterOpenerStyle", "runningHeaders",
     "duplexFlipEdge",
     "chapterStartNewPage", "chapterTitleOffsetPercent", "chapterTitleFontFamily",
     "generateBtn", "printBtn", "status", "preview", "pageSizeStyle",
@@ -22,9 +23,11 @@ window.addEventListener("DOMContentLoaded", () => {
   els.printBtn.addEventListener("click", () => window.print());
   els.paperSize.addEventListener("change", updatePaperSizeInfo);
   els.signatureSheetCount.addEventListener("input", updateSignatureInfo);
+  els.paragraphStyle.addEventListener("change", updateParagraphStyleUi);
 
   updatePaperSizeInfo();
   updateSignatureInfo();
+  updateParagraphStyleUi();
 });
 
 function updatePaperSizeInfo() {
@@ -36,15 +39,28 @@ function updateSignatureInfo() {
   els.signatureSheetCountInfo.textContent = `= ${sheets * 4} pages per signature (each sheet, folded once, holds 4 pages: front and back, each side showing 2 pages)`;
 }
 
+function updateParagraphStyleUi() {
+  const indentMode = els.paragraphStyle.value === "indent";
+  els.indentEm.closest(".field").hidden = !indentMode;
+  els.paragraphSpacingEm.closest(".field").hidden = indentMode;
+}
+
 function readSettingsFromForm() {
   return {
     paperSize: els.paperSize.value,
     signatureSheetCount: parseInt(els.signatureSheetCount.value, 10) || DEFAULT_SETTINGS.signatureSheetCount,
-    marginIn: parseFloat(els.marginIn.value) || DEFAULT_SETTINGS.marginIn,
+    marginTopIn: parseFloat(els.marginTopIn.value) || DEFAULT_SETTINGS.marginTopIn,
+    marginBottomIn: parseFloat(els.marginBottomIn.value) || DEFAULT_SETTINGS.marginBottomIn,
+    marginGutterIn: parseFloat(els.marginGutterIn.value) || DEFAULT_SETTINGS.marginGutterIn,
+    marginOutsideIn: parseFloat(els.marginOutsideIn.value) || DEFAULT_SETTINGS.marginOutsideIn,
     fontFamily: els.fontFamily.value || DEFAULT_SETTINGS.fontFamily,
     fontSizePt: parseFloat(els.fontSizePt.value) || DEFAULT_SETTINGS.fontSizePt,
     lineHeight: parseFloat(els.lineHeight.value) || DEFAULT_SETTINGS.lineHeight,
     paragraphSpacingEm: parseFloat(els.paragraphSpacingEm.value) || 0,
+    paragraphStyle: els.paragraphStyle.value || DEFAULT_SETTINGS.paragraphStyle,
+    indentEm: parseFloat(els.indentEm.value) || DEFAULT_SETTINGS.indentEm,
+    chapterOpenerStyle: els.chapterOpenerStyle.value || DEFAULT_SETTINGS.chapterOpenerStyle,
+    runningHeaders: els.runningHeaders.checked,
     justify: els.justify.checked,
     duplexFlipEdge: els.duplexFlipEdge.value,
     chapterStartNewPage: els.chapterStartNewPage.checked,
@@ -85,7 +101,7 @@ async function onGenerate() {
 
     applyPageSizeCss(settings.paperSize);
 
-    const pages = await paginateContent(state.epub.flowHtml, settings);
+    const pages = await paginateContent(state.epub.flowHtml, settings, state.epub.title);
     state.pages = pages;
     setStatus(`Paginated into ${pages.length} page(s). Imposing…`);
 
@@ -108,7 +124,15 @@ async function onGenerate() {
 }
 
 function applyPageSizeCss(paperSize) {
-  const size = paperSize === "a4" ? "A4" : "letter";
   // Sheets are laid out landscape (two half-pages side by side, folded down the middle).
-  els.pageSizeStyle.textContent = `@page { size: ${size} landscape; margin: 0; }`;
+  let size;
+  if (paperSize === "a4") size = "A4 landscape";
+  else if (paperSize === "letter") size = "letter landscape";
+  else {
+    // Custom sheet sizes: @page can't combine explicit lengths with the
+    // `landscape` keyword, so swap width/height ourselves instead.
+    const sheet = PAPER_SIZES_IN[paperSize];
+    size = `${sheet.height}in ${sheet.width}in`;
+  }
+  els.pageSizeStyle.textContent = `@page { size: ${size}; margin: 0; }`;
 }

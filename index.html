@@ -26,8 +26,9 @@
     <div class="field">
       <label for="paperSize">Paper size (sheet you print on)</label>
       <select id="paperSize">
-        <option value="a4">A4</option>
-        <option value="letter">Letter</option>
+        <option value="a4">A4 (folds to A5)</option>
+        <option value="letter">Letter (folds to 5.5"×8.5")</option>
+        <option value="trade6x9">Custom 9"×12" (folds to 6"×9" trade)</option>
       </select>
       <div id="paperSizeInfo" class="hint"></div>
     </div>
@@ -36,9 +37,25 @@
       <input type="number" id="signatureSheetCount" min="1" max="20" value="4">
       <div id="signatureSheetCountInfo" class="hint"></div>
     </div>
-    <div class="field">
-      <label for="marginIn">Margin, all sides (in)</label>
-      <input type="number" id="marginIn" min="0" step="0.05" value="0.875">
+    <div class="row-2">
+      <div class="field">
+        <label for="marginTopIn">Top margin (in)</label>
+        <input type="number" id="marginTopIn" min="0" step="0.05" value="0.875">
+      </div>
+      <div class="field">
+        <label for="marginBottomIn">Bottom margin (in)</label>
+        <input type="number" id="marginBottomIn" min="0" step="0.05" value="0.875">
+      </div>
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label for="marginGutterIn">Gutter margin (in) — spine side</label>
+        <input type="number" id="marginGutterIn" min="0" step="0.05" value="0.875">
+      </div>
+      <div class="field">
+        <label for="marginOutsideIn">Outside margin (in)</label>
+        <input type="number" id="marginOutsideIn" min="0" step="0.05" value="0.875">
+      </div>
     </div>
     <div class="field">
       <label for="duplexFlipEdge">Printer duplex setting</label>
@@ -69,6 +86,18 @@
         <option value="'Courier New', Courier, monospace">Courier (monospace)</option>
       </select>
     </div>
+    <div class="field">
+      <label for="chapterOpenerStyle">Chapter opener style</label>
+      <select id="chapterOpenerStyle">
+        <option value="none" selected>None</option>
+        <option value="dropcap">Drop cap</option>
+        <option value="smallcaps">Small caps (first line)</option>
+      </select>
+    </div>
+    <div class="field checkbox">
+      <input type="checkbox" id="runningHeaders">
+      <label for="runningHeaders">Running headers (chapter title + page number)</label>
+    </div>
 
     <h2>4. Typography</h2>
     <div class="field">
@@ -92,8 +121,19 @@
       </div>
     </div>
     <div class="field">
+      <label for="paragraphStyle">Paragraph style</label>
+      <select id="paragraphStyle">
+        <option value="block" selected>Spaced (no indent)</option>
+        <option value="indent">Indented (no indent on chapter openers)</option>
+      </select>
+    </div>
+    <div class="field">
       <label for="paragraphSpacingEm">Paragraph spacing (em)</label>
       <input type="number" id="paragraphSpacingEm" min="0" max="3" step="0.1" value="0.5">
+    </div>
+    <div class="field">
+      <label for="indentEm">First-line indent (em)</label>
+      <input type="number" id="indentEm" min="0" max="5" step="0.1" value="1.5">
     </div>
     <div class="field checkbox">
       <input type="checkbox" id="justify" checked>
