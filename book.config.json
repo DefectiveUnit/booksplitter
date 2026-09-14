@@ -1,0 +1,54 @@
+{
+  "_comment": "Single source of truth for a typeset book. Edit this, then re-run the build. `settings` maps 1:1 onto DEFAULT_SETTINGS in reflow.js.",
+
+  "source": {
+    "epub": "books/_OceanofPDF.com_Burn_of_the_everflame_-_Penn_cole.epub",
+    "outDir": "out"
+  },
+
+  "preview": {
+    "_comment": "Which chapters the preview images cover. Spine indices: front matter is roughly 0-13, chapter 1 starts near 14. Keep this small — it is the fast feedback loop.",
+    "fromChapter": 13,
+    "toChapter": 16,
+    "zoom": 1.3
+  },
+
+  "settings": {
+    "paperSize": "a4",
+    "signatureSheetCount": 4,
+    "duplexFlipEdge": "long",
+
+    "_marginComment": "Gutter is wider than the outside edge to leave room for the fold and stitch. The difference is deliberately small — the spread reads as one field of text, and an over-wide gutter looks like a mistake. Gutter + outside is held constant, so narrowing the difference does not change the measure or the page count.",
+    "marginTopIn": 0.62,
+    "marginBottomIn": 0.68,
+    "marginGutterIn": 0.92,
+    "marginOutsideIn": 0.84,
+
+    "fontFamily": "Garamond, Baskerville, 'Palatino Linotype', Palatino, Georgia, serif",
+    "_sizeComment": "Page count scales as roughly fontSize^2 x lineHeight. 11pt/1.42 gave 1161 pages; this lands under 900. The extra leading offsets the smaller size — a long measure needs it.",
+    "fontSizePt": 9.7,
+    "lineHeight": 1.37,
+    "runningHeaderDepthFraction": 0.55,
+    "justify": true,
+    "paragraphStyle": "indent",
+    "indentEm": 1.2,
+    "minLinesPerFragment": 2,
+
+    "chapterStartNewPage": true,
+    "chapterOpenerSpacePercent": 40,
+    "chapterLabelText": "Chapter",
+    "chapterLabelSizePt": 8,
+    "chapterNumberSizePt": 30,
+    "chapterNameSizePt": 13,
+    "chapterRuleStyle": "ornament",
+    "chapterDisplayFontFamily": "'Palatino Linotype', Palatino, Georgia, Garamond, serif",
+
+    "dropCap": true,
+    "dropCapLines": 3,
+    "dropCapRisePercent": 6,
+
+    "runningHeaders": true,
+    "pageNumbers": true,
+    "pageNumberPosition": "bottom-center"
+  }
+}

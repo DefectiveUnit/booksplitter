@@ -1,4 +1,10 @@
 <!doctype html>
+<!--
+  UNMAINTAINED. Superseded by render.html, driven by book.config.json via
+  build.mjs (see .claude/skills/booksplitter/SKILL.md). Kept for reference only —
+  this form duplicates the settings schema and is not kept in sync with
+  reflow.js DEFAULT_SETTINGS. Add new settings to book.config.json, not here.
+-->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -40,22 +46,25 @@
     <div class="row-2">
       <div class="field">
         <label for="marginTopIn">Top margin (in)</label>
-        <input type="number" id="marginTopIn" min="0" step="0.05" value="0.875">
+        <input type="number" id="marginTopIn" min="0" step="0.05" value="0.7">
       </div>
       <div class="field">
         <label for="marginBottomIn">Bottom margin (in)</label>
-        <input type="number" id="marginBottomIn" min="0" step="0.05" value="0.875">
+        <input type="number" id="marginBottomIn" min="0" step="0.05" value="0.78">
       </div>
     </div>
     <div class="row-2">
       <div class="field">
         <label for="marginGutterIn">Gutter margin (in) — spine side</label>
-        <input type="number" id="marginGutterIn" min="0" step="0.05" value="0.875">
+        <input type="number" id="marginGutterIn" min="0" step="0.05" value="0.85">
       </div>
       <div class="field">
         <label for="marginOutsideIn">Outside margin (in)</label>
-        <input type="number" id="marginOutsideIn" min="0" step="0.05" value="0.875">
+        <input type="number" id="marginOutsideIn" min="0" step="0.05" value="0.85">
       </div>
+    </div>
+    <div class="hint">
+      On A5 these leave a ~4.1" measure — about 65 characters a line, the comfortable range.
     </div>
     <div class="field">
       <label for="duplexFlipEdge">Printer duplex setting</label>
@@ -71,32 +80,65 @@
       <label for="chapterStartNewPage">Start each chapter on a new page</label>
     </div>
     <div class="field">
-      <label for="chapterTitleOffsetPercent">Chapter title position (% down the page)</label>
-      <input type="number" id="chapterTitleOffsetPercent" min="0" max="80" step="5" value="35">
+      <label for="chapterOpenerSpacePercent">Blank space above the title (% of the text block)</label>
+      <input type="number" id="chapterOpenerSpacePercent" min="0" max="70" step="5" value="40">
+      <div class="hint">The title group is centred within this space.</div>
     </div>
     <div class="field">
-      <label for="chapterTitleFontFamily">Chapter title font</label>
-      <select id="chapterTitleFontFamily">
-        <option value="Garamond, Baskerville, 'Palatino Linotype', Palatino, Georgia, serif" selected>Garamond (deluxe serif)</option>
-        <option value="Georgia, 'Times New Roman', serif">Georgia (serif)</option>
-        <option value="'Times New Roman', Times, serif">Times New Roman</option>
-        <option value="'Palatino Linotype', Palatino, serif">Palatino</option>
-        <option value="Arial, Helvetica, sans-serif">Arial (sans)</option>
-        <option value="'Trebuchet MS', sans-serif">Trebuchet (sans)</option>
-        <option value="'Courier New', Courier, monospace">Courier (monospace)</option>
+      <label for="chapterLabelText">Word above the number</label>
+      <input type="text" id="chapterLabelText" value="Chapter" placeholder="(leave empty to omit)">
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label for="chapterNumberSizePt">Number size (pt)</label>
+        <input type="number" id="chapterNumberSizePt" min="8" max="80" step="1" value="30">
+      </div>
+      <div class="field">
+        <label for="chapterNameSizePt">Title size (pt)</label>
+        <input type="number" id="chapterNameSizePt" min="6" max="40" step="0.5" value="13">
+      </div>
+    </div>
+    <div class="field">
+      <label for="chapterRuleStyle">Divider between number and title</label>
+      <select id="chapterRuleStyle">
+        <option value="ornament" selected>Rule with a diamond</option>
+        <option value="line">Plain rule</option>
+        <option value="none">None</option>
       </select>
     </div>
     <div class="field">
-      <label for="chapterOpenerStyle">Chapter opener style</label>
-      <select id="chapterOpenerStyle">
-        <option value="none" selected>None</option>
-        <option value="dropcap">Drop cap</option>
-        <option value="smallcaps">Small caps (first line)</option>
+      <label for="chapterDisplayFontFamily">Display font (titles, folios, drop caps)</label>
+      <select id="chapterDisplayFontFamily">
+        <option value="'Palatino Linotype', Palatino, Georgia, Garamond, serif" selected>Palatino (deluxe serif)</option>
+        <option value="Garamond, Baskerville, 'Palatino Linotype', Palatino, Georgia, serif">Garamond</option>
+        <option value="Georgia, 'Times New Roman', serif">Georgia (serif)</option>
+        <option value="'Times New Roman', Times, serif">Times New Roman</option>
+        <option value="Arial, Helvetica, sans-serif">Arial (sans)</option>
+        <option value="'Trebuchet MS', sans-serif">Trebuchet (sans)</option>
       </select>
     </div>
     <div class="field checkbox">
-      <input type="checkbox" id="runningHeaders">
-      <label for="runningHeaders">Running headers (chapter title + page number)</label>
+      <input type="checkbox" id="dropCap" checked>
+      <label for="dropCap">Drop cap on the first letter of each chapter</label>
+    </div>
+    <div class="field">
+      <label for="dropCapLines">Drop cap height (lines)</label>
+      <input type="number" id="dropCapLines" min="2" max="6" step="1" value="3">
+    </div>
+    <div class="field checkbox">
+      <input type="checkbox" id="runningHeaders" checked>
+      <label for="runningHeaders">Running heads (book title / chapter title)</label>
+    </div>
+    <div class="field checkbox">
+      <input type="checkbox" id="pageNumbers" checked>
+      <label for="pageNumbers">Page numbers</label>
+    </div>
+    <div class="field">
+      <label for="pageNumberPosition">Page number position</label>
+      <select id="pageNumberPosition">
+        <option value="bottom-center" selected>Bottom, centred</option>
+        <option value="bottom-outside">Bottom, outside edge</option>
+      </select>
     </div>
 
     <h2>4. Typography</h2>
@@ -113,18 +155,18 @@
     <div class="row-2">
       <div class="field">
         <label for="fontSizePt">Font size (pt)</label>
-        <input type="number" id="fontSizePt" min="6" max="24" step="0.5" value="11.5">
+        <input type="number" id="fontSizePt" min="6" max="24" step="0.5" value="11">
       </div>
       <div class="field">
         <label for="lineHeight">Line height</label>
-        <input type="number" id="lineHeight" min="1" max="3" step="0.05" value="1.4">
+        <input type="number" id="lineHeight" min="1" max="3" step="0.05" value="1.42">
       </div>
     </div>
     <div class="field">
       <label for="paragraphStyle">Paragraph style</label>
       <select id="paragraphStyle">
-        <option value="block" selected>Spaced (no indent)</option>
-        <option value="indent">Indented (no indent on chapter openers)</option>
+        <option value="indent" selected>Indented (no indent on chapter openers)</option>
+        <option value="block">Spaced (no indent)</option>
       </select>
     </div>
     <div class="field">
@@ -133,11 +175,16 @@
     </div>
     <div class="field">
       <label for="indentEm">First-line indent (em)</label>
-      <input type="number" id="indentEm" min="0" max="5" step="0.1" value="1.5">
+      <input type="number" id="indentEm" min="0" max="5" step="0.1" value="1.2">
     </div>
     <div class="field checkbox">
       <input type="checkbox" id="justify" checked>
       <label for="justify">Justify text</label>
+    </div>
+    <div class="field">
+      <label for="minLinesPerFragment">Widow/orphan control (min lines either side of a break)</label>
+      <input type="number" id="minLinesPerFragment" min="1" max="4" step="1" value="2">
+      <div class="hint">1 disables it. Higher values leave more pages running a line or two short.</div>
     </div>
 
     <button id="generateBtn" disabled>Generate</button>

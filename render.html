@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Booksplitter — renderer</title>
+<!--
+  The one renderer. Reads book.config.json, then produces whichever view the
+  `mode` query param asks for:
+
+    mode=preview   facing-page spreads, for looking at and for screenshotting
+    mode=reading   every page in reading order, one trim page per printed page
+    mode=imposed   pages imposed onto duplex sheets, ready to fold and stitch
+
+  Open it in a browser to look at it; build.mjs drives the same file headlessly.
+  Query params override the config: ?from= ?to= ?zoom= ?mode=
+
+  build.mjs waits for window.__renderDone — set it only once the DOM is final,
+  or the driver screenshots a half-drawn page.
+-->
+<style>
+  :root { --ink: #eee; --bg: #3b3a37; }
+  body { margin: 0; background: var(--bg); font-family: -apple-system, "Segoe UI", Arial, sans-serif; color: var(--ink); }
+  #status { padding: 8px 14px; font-size: 13px; background: #222; position: sticky; top: 0; z-index: 5; }
+  #status.error { color: #f88; }
+
+  /* --- preview: spreads --------------------------------------------------- */
+  #out.preview { display: flex; flex-direction: column; align-items: center; gap: 28px; padding: 20px; }
+  .spread-wrap { display: flex; flex-direction: column; }
+  .spread-label { font-size: 11px; color: #aaa; text-align: center; margin-bottom: 4px; }
+  .spread { display: flex; box-shadow: 0 6px 24px rgba(0,0,0,0.45); background: #fff; }
+  .spread .page + .page { border-left: 1px solid #e8e2d6; }
+
+  .page { background: #fffdf8; overflow: hidden; }
+
+  /* --- reading: one page per sheet ---------------------------------------- */
+  #out.reading { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px; }
+  #out.reading .page { box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+
+  /* --- imposed: duplex sheets --------------------------------------------- */
+  #out.imposed { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px; }
+  .sheets-container { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .sheet { background: #fff; position: relative; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+  .sheet-side-row { display: flex; width: 100%; height: 100%; }
+  .slot { overflow: hidden; }
+  .slot.blank { background: #fff; }
+  .sheet-label, .signature-header { font-size: 10px; color: #888; }
+  .sheet-label { position: absolute; top: 3px; left: 4px; }
+
+  /* --- print -------------------------------------------------------------- */
+  @media print {
+    body { background: #fff; }
+    #status, .no-print, .spread-label { display: none !important; }
+    /* Every selector that set a flex layout has to be beaten here — `#out.reading`
+       outranks a bare `#out`, and a surviving flex column with `gap` and `padding`
+       overflows each sheet just enough to emit a stray blank page after it. */
+    #out, #out.preview, #out.reading, #out.imposed, .sheets-container {
+      display: block;
+      padding: 0;
+      margin: 0;
+      gap: 0;
+    }
+    .page, .sheet {
+      box-shadow: none;
+      border: none;
+      break-after: page;
+      page-break-after: always;
+    }
+    .page:last-child, .sheet:last-child { break-after: auto; page-break-after: auto; }
+  }
+</style>
+<style id="pageRule"></style>
+</head>
+<body>
+<div id="status">loading…</div>
+<div id="out"></div>
+
+<script src="vendor/jszip.min.js"></script>
+<script>
+// Cache-buster: `python -m http.server` sends no Cache-Control, so the browser
+// will happily run yesterday's engine against today's renderer.
+(function () {
+  const v = Date.now();
+  for (const src of ["reflow.js", "epub.js", "paginate.js", "impose.js", "render.js"]) {
+    document.write(`<script src="${src}?v=${v}"><\/script>`);
+  }
+})();
+</script>
+<script>
+const params = new URLSearchParams(location.search);
+const MODE = params.get("mode") || "preview";
+const statusEl = document.getElementById("status");
+const outEl = document.getElementById("out");
+
+function fail(err) {
+  console.error(err);
+  statusEl.textContent = "ERROR: " + (err && err.message ? err.message : err);
+  statusEl.classList.add("error");
+  // Still resolve the gate, so the driver reports the error instead of timing out.
+  window.__renderError = String(err && err.message ? err.message : err);
+  window.__renderDone = true;
+}
+
+async function main() {
+  const config = await (await fetch("book.config.json?v=" + Date.now())).json();
+  const settings = { ...DEFAULT_SETTINGS, ...config.settings };
+
+  statusEl.textContent = "fetching epub…";
+  const res = await fetch(config.source.epub);
+  if (!res.ok) throw new Error(`Could not fetch ${config.source.epub} (${res.status})`);
+  const blob = await res.blob();
+
+  statusEl.textContent = "parsing epub…";
+  const book = await parseEpub(new File([blob], config.source.epub.split("/").pop()));
+  if (!book.chapters) {
+    throw new Error("parseEpub() returned no `chapters` — stale cached epub.js; hard-reload.");
+  }
+  settings.language = book.language;
+
+  // Preview renders a slice; the two print modes always render the whole book.
+  const isPreview = MODE === "preview";
+  const from = isPreview ? intParam("from", config.preview.fromChapter) : 0;
+  const to = isPreview ? intParam("to", config.preview.toChapter) : book.chapters.length;
+  const slice = book.chapters.slice(from, to);
+
+  statusEl.textContent = `paginating ${slice.length} chapter(s)…`;
+  const flow = slice.map((c) => c.html).join("\n");
+  const pages = await paginateContent(flow, settings, book.title);
+
+  applyPageRule(settings, MODE);
+
+  // ?count=1 reports the page count without drawing anything. Building a DOM node
+  // per page dominates the wall clock on a whole book (seconds to paginate, minutes
+  // to render), so this is the fast way to answer "how long is it at this size?".
+  const countOnly = params.get("count");
+  if (countOnly) {
+    // Nothing to draw.
+  } else if (MODE === "imposed") renderImposed(pages, settings);
+  else if (MODE === "reading") renderReading(pages);
+  else renderSpreads(pages, parseFloat(params.get("zoom") || config.preview.zoom || 1));
+
+  statusEl.textContent =
+    `${book.title} — ${MODE} — chapters ${from}–${to} → ${pages.length} pages` +
+    ` · ${settings.fontSizePt}pt/${settings.lineHeight}`;
+
+  // Let layout and fonts settle before the driver captures anything.
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  window.__renderPageCount = pages.length;
+  window.__renderDone = true;
+}
+
+function intParam(name, fallback) {
+  const v = parseInt(params.get(name), 10);
+  return Number.isFinite(v) ? v : fallback;
+}
+
+// The @page size has to match what's being printed, or Chrome scales the output
+// and the trim size silently stops being the trim size.
+function applyPageRule(settings, mode) {
+  const sheet = PAPER_SIZES_IN[settings.paperSize] || PAPER_SIZES_IN.a4;
+  const trim = getTrimSizeIn(settings.paperSize);
+  const size =
+    mode === "imposed"
+      ? `${sheet.height}in ${sheet.width}in` // sheets print landscape
+      : `${trim.width}in ${trim.height}in`;
+  document.getElementById("pageRule").textContent = `@page { size: ${size}; margin: 0; }`;
+}
+
+function renderReading(pages) {
+  outEl.className = "reading";
+  pages.forEach((p) => outEl.appendChild(p));
+}
+
+function renderImposed(pages, settings) {
+  outEl.className = "imposed";
+  const { sheetsContainer } = renderImposedSheets(pages, settings);
+  outEl.appendChild(sheetsContainer);
+}
+
+// Lay pages out as they'll be read: page 1 alone on the right, then verso/recto
+// pairs. A drop cap or a chapter sink judged on a lone page is misleading — the
+// spread is the unit of design.
+function renderSpreads(pages, zoom) {
+  outEl.className = "preview";
+  const groups = [[pages[0]]];
+  for (let i = 1; i < pages.length; i += 2) groups.push(pages.slice(i, i + 2));
+
+  groups.forEach((group, gi) => {
+    if (!group[0]) return;
+    const wrap = document.createElement("div");
+    wrap.className = "spread-wrap";
+
+    const label = document.createElement("div");
+    label.className = "spread-label";
+    label.textContent = group.map((p) => "p" + p.dataset.pageIndex).join(" / ");
+
+    const spread = document.createElement("div");
+    spread.className = "spread";
+    spread.style.zoom = zoom;
+    if (gi === 0) {
+      const filler = document.createElement("div"); // the inside of the front cover
+      filler.style.width = group[0].style.width;
+      filler.style.background = "#c9c4ba";
+      spread.appendChild(filler);
+    }
+    group.forEach((p) => spread.appendChild(p));
+
+    wrap.appendChild(label);
+    wrap.appendChild(spread);
+    outEl.appendChild(wrap);
+  });
+}
+
+main().catch(fail);
+</script>
+</body>
+</html>

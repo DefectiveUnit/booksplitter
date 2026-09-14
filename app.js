@@ -1,3 +1,11 @@
+// UNMAINTAINED. Superseded by book.config.json + build.mjs + render.html, which
+// are what the booksplitter skill drives. Kept only for reference.
+//
+// This file and index.html duplicate the settings schema in a second place. They
+// are NOT kept in sync with reflow.js DEFAULT_SETTINGS — the form will silently
+// miss any setting added since, and readSettingsFromForm() throws on any control
+// that was removed. Do not add settings here; add them to book.config.json.
+//
 // Orchestration: wires the settings UI to the epub -> reflow -> paginate -> impose -> render pipeline.
 
 const state = {
@@ -12,9 +20,12 @@ window.addEventListener("DOMContentLoaded", () => {
     "paperSize", "paperSizeInfo", "signatureSheetCount", "signatureSheetCountInfo",
     "marginTopIn", "marginBottomIn", "marginGutterIn", "marginOutsideIn",
     "fontFamily", "fontSizePt", "lineHeight", "paragraphSpacingEm", "justify",
-    "paragraphStyle", "indentEm", "chapterOpenerStyle", "runningHeaders",
-    "duplexFlipEdge",
-    "chapterStartNewPage", "chapterTitleOffsetPercent", "chapterTitleFontFamily",
+    "paragraphStyle", "indentEm", "minLinesPerFragment",
+    "runningHeaders", "pageNumbers", "pageNumberPosition",
+    "duplexFlipEdge", "chapterStartNewPage",
+    "chapterOpenerSpacePercent", "chapterLabelText", "chapterNumberSizePt",
+    "chapterNameSizePt", "chapterRuleStyle", "chapterDisplayFontFamily",
+    "dropCap", "dropCapLines",
     "generateBtn", "printBtn", "status", "preview", "pageSizeStyle",
   ].forEach((id) => (els[id] = document.getElementById(id)));
 
@@ -59,13 +70,27 @@ function readSettingsFromForm() {
     paragraphSpacingEm: parseFloat(els.paragraphSpacingEm.value) || 0,
     paragraphStyle: els.paragraphStyle.value || DEFAULT_SETTINGS.paragraphStyle,
     indentEm: parseFloat(els.indentEm.value) || DEFAULT_SETTINGS.indentEm,
-    chapterOpenerStyle: els.chapterOpenerStyle.value || DEFAULT_SETTINGS.chapterOpenerStyle,
+    minLinesPerFragment:
+      parseInt(els.minLinesPerFragment.value, 10) || DEFAULT_SETTINGS.minLinesPerFragment,
     runningHeaders: els.runningHeaders.checked,
+    pageNumbers: els.pageNumbers.checked,
+    pageNumberPosition: els.pageNumberPosition.value,
     justify: els.justify.checked,
     duplexFlipEdge: els.duplexFlipEdge.value,
     chapterStartNewPage: els.chapterStartNewPage.checked,
-    chapterTitleOffsetPercent: parseFloat(els.chapterTitleOffsetPercent.value) || 0,
-    chapterTitleFontFamily: els.chapterTitleFontFamily.value || DEFAULT_SETTINGS.chapterTitleFontFamily,
+    chapterOpenerSpacePercent: parseFloat(els.chapterOpenerSpacePercent.value) || 0,
+    // Deliberately not `||` — an empty string is a real choice here (omit the word).
+    chapterLabelText: els.chapterLabelText.value.trim(),
+    chapterNumberSizePt:
+      parseFloat(els.chapterNumberSizePt.value) || DEFAULT_SETTINGS.chapterNumberSizePt,
+    chapterNameSizePt:
+      parseFloat(els.chapterNameSizePt.value) || DEFAULT_SETTINGS.chapterNameSizePt,
+    chapterRuleStyle: els.chapterRuleStyle.value || DEFAULT_SETTINGS.chapterRuleStyle,
+    chapterDisplayFontFamily:
+      els.chapterDisplayFontFamily.value || DEFAULT_SETTINGS.chapterDisplayFontFamily,
+    dropCap: els.dropCap.checked,
+    dropCapLines: parseInt(els.dropCapLines.value, 10) || DEFAULT_SETTINGS.dropCapLines,
+    language: (state.epub && state.epub.language) || DEFAULT_SETTINGS.language,
   };
 }
 
